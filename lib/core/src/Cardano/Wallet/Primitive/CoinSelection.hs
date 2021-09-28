@@ -101,6 +101,7 @@ import qualified Cardano.Wallet.Primitive.CoinSelection.Balance as Balance
 import qualified Cardano.Wallet.Primitive.CoinSelection.Collateral as Collateral
 import qualified Cardano.Wallet.Primitive.Types.TokenBundle as TokenBundle
 import qualified Cardano.Wallet.Primitive.Types.TokenMap as TokenMap
+import qualified Cardano.Wallet.Primitive.Types.UTxO as UTxO
 import qualified Data.Foldable as F
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
@@ -128,13 +129,18 @@ performSelection constraints params = do
     preparedOutputs <- withExceptT SelectionOutputsError $ except
         $ prepareOutputs constraints (view #outputsToCover params)
     withExceptT SelectionBalanceError
-        $ fmap mkSelection
+        $ fmap (flip (mkSelection params) collateralResult)
         $ ExceptT
         $ uncurry Balance.performSelection
         $ toBalanceConstraintsParams
             ( constraints
             , params {outputsToCover = preparedOutputs}
             )
+  where
+    collateralResult :: Collateral.SelectionResult TxIn
+    collateralResult = Collateral.SelectionResult
+        -- TODO: [ADP-1037]
+        { coinsSelected = Map.empty }
 
 toBalanceConstraintsParams
     :: (        SelectionConstraints,         SelectionParams)
@@ -216,14 +222,17 @@ toCollateralConstraintsParams (constraints, params) =
 
 -- | Makes a selection from an ordinary selection and a collateral selection.
 --
--- TODO: [ADP-1037]
--- Adjust this function to accept the result of a collateral selection as a
--- parameter.
---
-mkSelection :: Balance.SelectionResult -> Selection
-mkSelection balanceResult = Selection
+mkSelection
+    :: SelectionParams
+    -> Balance.SelectionResult
+    -> Collateral.SelectionResult TxIn
+    -> Selection
+mkSelection params balanceResult collateralResult = Selection
     { inputs = view #inputsSelected balanceResult
-    , collateral = [] --TODO: [ADP-1037]
+    , collateral = UTxO.toList $
+        view #utxoAvailableForCollateral params
+        `UTxO.restrictedBy`
+        Map.keysSet (view #coinsSelected collateralResult)
     , outputs = view #outputsCovered balanceResult
     , change = view #changeGenerated balanceResult
     , assetsToMint = view #assetsToMint balanceResult
