@@ -169,6 +169,7 @@ dummyNetworkLayer = NetworkLayer
     , currentNodeTip = error "currentNodeTip: not implemented"
     , watchNodeTip = error "watchNodeTip: not implemented"
     , currentProtocolParameters = error "currentProtocolParameters: not implemented"
+    , currentNodeProtocolParameters = error "currentNodeProtocolParameters: not implemented"
     , currentSlottingParameters = error "currentSlottingParameters: not implemented"
     , postTx = error "postTx: not implemented"
     , stakeDistribution = error "stakeDistribution: not implemented"
