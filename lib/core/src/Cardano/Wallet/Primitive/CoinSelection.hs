@@ -5,6 +5,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- |
@@ -70,7 +71,7 @@ import Cardano.Wallet.Primitive.Types.Tx
     , txOutMaxTokenQuantity
     )
 import Cardano.Wallet.Primitive.Types.UTxO
-    ( UTxO )
+    ( UTxO (..) )
 import Cardano.Wallet.Primitive.Types.UTxOSelection
     ( UTxOSelection )
 import Control.Monad.Random.Class
@@ -97,9 +98,11 @@ import Numeric.Natural
     ( Natural )
 
 import qualified Cardano.Wallet.Primitive.CoinSelection.Balance as Balance
+import qualified Cardano.Wallet.Primitive.CoinSelection.Collateral as Collateral
 import qualified Cardano.Wallet.Primitive.Types.TokenBundle as TokenBundle
 import qualified Cardano.Wallet.Primitive.Types.TokenMap as TokenMap
 import qualified Data.Foldable as F
+import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
 -- | Performs a coin selection.
@@ -188,6 +191,27 @@ toBalanceConstraintsParams (constraints, params) =
             view #outputsToCover params
         , utxoAvailable =
             view #utxoAvailableForInputs params
+        }
+
+toCollateralConstraintsParams
+    :: (           SelectionConstraints,            SelectionParams     )
+    -> (Collateral.SelectionConstraints, Collateral.SelectionParams TxIn)
+toCollateralConstraintsParams (constraints, params) =
+    (collateralConstraints, collateralParams)
+  where
+    collateralConstraints = Collateral.SelectionConstraints
+        { maximumSelectionSize =
+            view #maximumCollateralInputCount constraints
+        , searchSpaceLimit =
+            Collateral.searchSpaceLimitDefault
+        }
+    collateralParams = Collateral.SelectionParams
+        { coinsAvailable =
+            Map.mapMaybeWithKey
+                (curry (view #utxoSuitableForCollateral constraints))
+                (unUTxO (view #utxoAvailableForCollateral params))
+        , minimumSelectionAmount =
+            Coin 0
         }
 
 -- | Makes a selection from an ordinary selection and a collateral selection.
