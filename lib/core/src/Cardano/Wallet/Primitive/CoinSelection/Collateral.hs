@@ -59,6 +59,8 @@ import Cardano.Wallet.Primitive.Types.Coin
     ( Coin )
 import Data.Function
     ( (&) )
+import Data.IntCast
+    ( intCast, intCastMaybe )
 import Data.List.NonEmpty
     ( NonEmpty )
 import Data.Map.Strict
@@ -393,12 +395,12 @@ numberOfSubsequencesOfSize n k
     | k == 0 || k ==  n      = Just 1
     | k == 1 || k == (n - 1) = Just n
     | resultOutOfBounds      = Nothing
-    | otherwise              = Just (fromIntegral resultExact)
+    | otherwise              = intCastMaybe resultExact
   where
     resultExact :: Integer
     resultExact = MathExact.choose
-        (fromIntegral @Int @Integer n)
-        (fromIntegral @Int @Integer k)
+        (intCast @Int @Integer n)
+        (intCast @Int @Integer k)
 
     resultFast :: Integer
     resultFast = floor (MathFast.choose n k)
@@ -406,9 +408,9 @@ numberOfSubsequencesOfSize n k
     resultOutOfBounds :: Bool
     resultOutOfBounds = False
         || resultFast  < 0
-        || resultFast  > fromIntegral @Int @Integer (maxBound @Int)
+        || resultFast  > intCast @Int @Integer (maxBound @Int)
         || resultExact < 0
-        || resultExact > fromIntegral @Int @Integer (maxBound @Int)
+        || resultExact > intCast @Int @Integer (maxBound @Int)
 
 -- | Generates all subsequences of size 'k' from a particular sequence.
 --
